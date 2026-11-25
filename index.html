@@ -466,7 +466,11 @@ html,body{overflow-x:hidden}
 .up:first-child{border-top:0}
 .up .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .up small{display:block;color:var(--text-3)}
-.up .ok{color:var(--ok)}.up .nao{color:var(--warn)}.up .err{color:var(--risk)}
+.up .ok{color:var(--ok)}.up .nao{color:var(--warn)}.up .err{color:var(--risk)}.up .rep{color:var(--text-3)}
+.up-mon{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin-top:4px;border-radius:var(--r-pan);background:var(--surface-2);border:1px solid var(--border);font-size:var(--t-13)}
+.up-mon .mon-l{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.mon{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:var(--t-12);font-weight:500}
+.mon.ok{background:var(--ok-wash);color:var(--ok)}.mon.rep{background:var(--hover);color:var(--text-2)}.mon.nao{background:var(--warn-wash,color-mix(in srgb,var(--warn) 16%,transparent));color:var(--warn)}.mon.erro{background:color-mix(in srgb,var(--risk) 14%,transparent);color:var(--risk)}
 .up .gira{width:14px;height:14px;border:1.5px solid var(--text-3);border-right-color:transparent;border-radius:50%;animation:gira .7s linear infinite}
 
 /* formularios de edicao */
@@ -2083,8 +2087,13 @@ function painelAnexar(standalone) {
     emps.sort().map(function (e) { return '<option' + (S.anexoEmpresa === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></div>' +
     '<label class="drop" id="drop">' + ic('upload') + '<b>Arraste os PDFs aqui</b><span>ou clique para escolher no computador ou no celular</span><input type="file" accept="application/pdf,.pdf" multiple data-anx-arq></label>';
   if (S.anexos.length) {
+    var cont = { ok: 0, rep: 0, nao: 0, erro: 0, andando: 0 };
+    S.anexos.forEach(function (a) { if (a.st === 'ok') cont.ok++; else if (a.st === 'rep') cont.rep++; else if (a.st === 'nao') cont.nao++; else if (a.st === 'erro') cont.erro++; else cont.andando++; });
+    var pill = function (n, cls, txt) { return n ? '<span class="mon ' + cls + '">' + n + ' ' + txt + '</span>' : ''; };
+    h += '<div class="up-mon" role="status" aria-live="polite">' + (cont.andando ? '<span class="gira"></span><span class="t2">Conferindo ' + cont.andando + '…</span>' : '<b style="font-weight:600">Resultado</b>') +
+      '<div class="mon-l">' + pill(cont.ok, 'ok', cont.ok === 1 ? 'enviada' : 'enviadas') + pill(cont.rep, 'rep', cont.rep === 1 ? 'repetida' : 'repetidas') + pill(cont.nao, 'nao', cont.nao === 1 ? 'não reconhecida' : 'não reconhecidas') + pill(cont.erro, 'erro', cont.erro === 1 ? 'falhou' : 'falharam') + '</div></div>';
     h += '<div class="up-l">' + S.anexos.map(function (a) {
-      var st = a.st === 'enviando' ? '<span class="gira" aria-label="Enviando"></span>' : a.st === 'ok' ? '<span class="ok">' + ic('check') + '</span>' : a.st === 'nao' ? '<span class="nao">' + ic('alerta') + '</span>' : a.st === 'erro' ? '<span class="err">' + ic('erro') + '</span>' : '<span class="t3">' + ic('relogio') + '</span>';
+      var st = a.st === 'enviando' ? '<span class="gira" aria-label="Enviando"></span>' : a.st === 'ok' ? '<span class="ok">' + ic('check') + '</span>' : a.st === 'rep' ? '<span class="rep">' + ic('copiar') + '</span>' : a.st === 'nao' ? '<span class="nao">' + ic('alerta') + '</span>' : a.st === 'erro' ? '<span class="err">' + ic('erro') + '</span>' : '<span class="t3">' + ic('relogio') + '</span>';
       return '<div class="up">' + st + '<div style="min-width:0"><span class="nm" title="' + esc(a.nome) + '">' + esc(a.nome) + '</span><small>' + esc(a.msg || (a.st === 'fila' ? 'na fila' : a.st === 'enviando' ? 'enviando e lendo o PDF…' : '')) + '</small></div>' +
         (a.link ? '<button class="btn p fan" data-abrir="' + esc(a.link) + '">' + ic('externo') + 'Abrir</button>' : '<span></span>') + '</div>';
     }).join('') + '</div>';
@@ -2112,18 +2121,20 @@ function anexar(lista) {
       a.st = 'enviando'; desenharConteudo();
       if (a.arq.size > 20 * 1024 * 1024) { a.st = 'erro'; a.msg = 'Maior que 20 MB.'; return; }
       return lerArquivo(a.arq).then(function (b64) {
-        if (!REAL) return new Promise(function (ok) { setTimeout(function () { ok(emp || /sem nome/i.test(a.nome) ? (emp ? { reconhecida: true, empresa: emp, arquivo: a.nome, tipo: 'PGFN', numero: '15.383.117', vencimento: '30/11/2026', valor: '1.157,00' } : { reconhecida: false, msg: 'Não reconheci a empresa. Ficou na _Entrada.' }) : { reconhecida: true, empresa: 'BRASA FORTE RESTAURANTE', arquivo: 'BRASA FORTE RESTAURANTE - PGFN 15.383.117 - 11-2026.pdf', tipo: 'PGFN', numero: '15.383.117', vencimento: '30/11/2026', valor: '1.157,00' }); }, 900); });
+        if (!REAL) return new Promise(function (ok) { setTimeout(function () { if (/repet|dup/i.test(a.nome)) return ok({ reconhecida: true, repetida: true, empresa: 'BRASA FORTE RESTAURANTE', arquivo: a.nome, tipo: 'PGFN', numero: '15.383.117', msg: 'Repetida — já estava em BRASA FORTE RESTAURANTE. Descartei a cópia.' }); ok(emp || /sem nome/i.test(a.nome) ? (emp ? { reconhecida: true, empresa: emp, arquivo: a.nome, tipo: 'PGFN', numero: '15.383.117', vencimento: '30/11/2026', valor: '1.157,00' } : { reconhecida: false, msg: 'Não reconheci a empresa. Ficou na _Entrada.' }) : { reconhecida: true, empresa: 'BRASA FORTE RESTAURANTE', arquivo: 'BRASA FORTE RESTAURANTE - PGFN 15.383.117 - 11-2026.pdf', tipo: 'PGFN', numero: '15.383.117', vencimento: '30/11/2026', valor: '1.157,00' }); }, 900); });
         return api('quitaReceberGuia', a.nome, b64, emp, VM.competencia);
       }).then(function (r) {
         if (!r) return;
-        if (r.reconhecida) { a.st = 'ok'; a.link = r.link; a.msg = 'Guardada em ' + r.empresa + (r.tipo ? ' · ' + r.tipo + (r.numero ? ' nº ' + r.numero : '') : '') + (r.vencimento ? ' · vence ' + r.vencimento : '') + (r.valor ? ' · R$ ' + r.valor : '') + (r.qv ? ' · a Q&V paga' : '') + (r.situacao === 'parcelamento fora do controle' ? ' · parcelamento novo, confirme no Hoje' : ''); }
+        if (r.repetida) { a.st = 'rep'; a.link = r.link; a.msg = r.msg || ('Repetida — já estava em ' + r.empresa + '. Descartei a cópia.'); }
+        else if (r.reconhecida) { a.st = 'ok'; a.link = r.link; a.msg = 'Guardada em ' + r.empresa + (r.tipo ? ' · ' + r.tipo + (r.numero ? ' nº ' + r.numero : '') : '') + (r.vencimento ? ' · vence ' + r.vencimento : '') + (r.valor ? ' · R$ ' + r.valor : '') + (r.qv ? ' · a Q&V paga' : '') + (r.situacao === 'parcelamento fora do controle' ? ' · parcelamento novo, confirme no Hoje' : ''); }
         else { a.st = 'nao'; a.msg = r.msg || 'Não reconheci a empresa. Ficou na _Entrada.'; }
       }).catch(function (e) { a.st = 'erro'; a.msg = 'Não deu certo: ' + e; });
     }).then(function () { desenharConteudo(); });
   });
   seq.then(function () {
     var ok = novos.filter(function (a) { return a.st === 'ok'; }).length;
-    aviso(plural(ok, 'guia guardada', 'guias guardadas') + ' de ' + novos.length + '.');
+    var rp = novos.filter(function (a) { return a.st === 'rep'; }).length, falh = novos.filter(function (a) { return a.st === 'erro' || a.st === 'nao'; }).length;
+    aviso(plural(ok, 'guia guardada', 'guias guardadas') + (rp ? ' · ' + rp + ' repetida' + (rp > 1 ? 's' : '') : '') + (falh ? ' · ' + falh + ' com problema' : '') + '.');
     // recarrega o painel para as guias recem-anexadas aparecerem na hora (sincroniza banco+planilha)
     if (ok && SITE) { S.atualizando = true; desenharTopo(); api('quitaSincronizar', mesBase()).then(function (d) { S.atualizando = false; S.geradoEm = new Date().toISOString(); aplicarVM(d, true); }).catch(function () { S.atualizando = false; desenharTopo(); }); }
   });
