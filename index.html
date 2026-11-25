@@ -2121,7 +2121,12 @@ function anexar(lista) {
       }).catch(function (e) { a.st = 'erro'; a.msg = 'Não deu certo: ' + e; });
     }).then(function () { desenharConteudo(); });
   });
-  seq.then(function () { var ok = novos.filter(function (a) { return a.st === 'ok'; }).length; aviso(plural(ok, 'guia guardada', 'guias guardadas') + ' de ' + novos.length + '.'); });
+  seq.then(function () {
+    var ok = novos.filter(function (a) { return a.st === 'ok'; }).length;
+    aviso(plural(ok, 'guia guardada', 'guias guardadas') + ' de ' + novos.length + '.');
+    // recarrega o painel para as guias recem-anexadas aparecerem na hora (sincroniza banco+planilha)
+    if (ok && SITE) { S.atualizando = true; desenharTopo(); api('quitaSincronizar', mesBase()).then(function (d) { S.atualizando = false; S.geradoEm = new Date().toISOString(); aplicarVM(d, true); }).catch(function () { S.atualizando = false; desenharTopo(); }); }
+  });
 }
 
 
