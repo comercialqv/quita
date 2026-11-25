@@ -982,7 +982,7 @@ function esqueletoGuias() {
 
 
 /* ============================== Envios ============================== */
-var SIT_E = { na_fila: ['Na fila', 'neu vivo'], encaminhando: ['Encaminhando', 'acc vivo'], saindo: ['Saindo do Outlook', 'acc vivo'], parado: ['Parado na caixa de saída', 'risk'], erro: ['Erro no envio', 'risk'], pulado: ['Não enviado', 'warn'], pronto: ['Pronto para enviar', 'acc'], falta: ['Falta guia', 'warn'], semguia: ['Sem guias', 'neu'], enviado: ['Enviado', 'ok'], entregue: ['Entregue', 'ok'], devolvido: ['Devolvido', 'risk'], mao: ['Marcado à mão', 'ok'], baixa: ['Cliente baixa', 'neu'], whats: ['Não enviado', 'warn'] };
+var SIT_E = { na_fila: ['Na fila', 'neu vivo'], encaminhando: ['Encaminhando', 'acc vivo'], saindo: ['Saindo do Outlook', 'acc vivo'], parado: ['Parado na caixa de saída', 'risk'], erro: ['Erro no envio', 'risk'], pulado: ['Não enviado', 'warn'], pronto: ['Pronto para enviar', 'acc'], falta: ['Falta guia', 'warn'], semguia: ['Sem guias', 'neu'], enviado: ['Enviado', 'ok'], entregue: ['Entregue', 'ok'], devolvido: ['Devolvido', 'risk'], mao: ['Marcado à mão', 'ok'], baixa: ['Cliente baixa', 'neu'], whats_pronto: ['Pronto para enviar', 'acc'], whats: ['Não enviado', 'warn'] };
 function demoEnvios() {
   var e = function (id, emp, para, cc, assunto, sit, guias, esp, extra) { return Object.assign({ id: id, canal: 'email', empresas: emp, para: para, cc: cc || [], assunto: assunto, sit: sit, guias: guias, esperadas: esp }, extra || {}); };
   var gu = function (arq, mod, num, venc, val, parc) { return { arq: arq, mod: mod, num: num, venc: venc, val: val, parc: parc || '', kb: 70 + Math.round(val % 40) }; };
@@ -995,8 +995,8 @@ function demoEnvios() {
     e('e5', ['Atlas Engenharia e Obras Ltda'], ['contas@atlasobras.com.br'], [], 'PARCELAMENTO ATLAS', 'entregue', [gu('ATLAS ENGENHARIA E OBRAS - PGFN 18.831.170 - 11-2026.pdf', 'PGFN', '18.831.170', '30/11/2026', 1930.05)], 1, { quando: '24/11/2026 às 10:45' }),
     e('e6', ['Madeireira Serra Azul Ltda'], ['financeiro@serraazul.ind.br'], [], 'SERRA AZUL - ICMS', 'devolvido', [gu('MADEIREIRA SERRA AZUL - Estadual 16.532.468 - 11-2026.pdf', 'Estadual', '16.532.468', '30/11/2026', 2310)], 1, { quando: '24/11/2026 às 10:47', motivo: 'A caixa financeiro@serraazul.ind.br não existe. Corrija o e-mail na aba Envio e envie de novo.' }),
     e('e7', ['Grão Fino Padaria Ltda'], ['graofino@hotmail.com'], [], 'GRÃO FINO - PARCELAMENTO', 'pronto', [gu('GRÃO FINO PADARIA - Simplificado 0061435566 - 11-2026.pdf', 'Simplificado', '0061435566', '30/11/2026', 544.79)], 1, { ate: 20, atrasado: true }),
-    { id: 'w1', canal: 'whatsapp', empresas: ['Ponto Fit Academia Ltda'], fone: '(11) 98877-1020', sit: 'whats', guias: [gu('PONTO FIT ACADEMIA - Simplificado 16915585 - 11-2026.pdf', 'Simplificado', '16915585', '30/11/2026', 1865)], esperadas: 1 },
-    { id: 'w2', canal: 'whatsapp', empresas: ['Oficina Mecânica Três Irmãos Ltda'], fone: '(11) 97765-4411', sit: 'whats', guias: [gu('OFICINA MECÂNICA TRÊS IRMÃOS - Estadual 21.129.872 - 11-2026.pdf', 'Estadual', '21.129.872', '30/11/2026', 3012)], esperadas: 1 },
+    { id: 'w1', canal: 'whatsapp', empresas: ['Ponto Fit Academia Ltda'], fone: '(11) 98877-1020', sit: 'whats_pronto', guias: [gu('PONTO FIT ACADEMIA - Simplificado 16915585 - 11-2026.pdf', 'Simplificado', '16915585', '30/11/2026', 1865)], esperadas: 1 },
+    { id: 'w2', canal: 'whatsapp', empresas: ['Oficina Mecânica Três Irmãos Ltda'], fone: '(11) 97765-4411', sit: 'whats_pronto', guias: [gu('OFICINA MECÂNICA TRÊS IRMÃOS - Estadual 21.129.872 - 11-2026.pdf', 'Estadual', '21.129.872', '30/11/2026', 3012)], esperadas: 1 },
     { id: 'w3', canal: 'whatsapp', empresas: ['Pinheiral Distribuidora Ltda'], fone: '(11) 95544-0098', sit: 'mao', guias: [gu('PINHEIRAL DISTRIBUIDORA - Municipal 20.746.755 - 11-2026.pdf', 'Municipal', '20.746.755', '30/11/2026', 2035)], esperadas: 1, quando: '23/11/2026 às 16:10' },
     { id: 'w4', canal: 'whatsapp', empresas: ['Verde Vale Cosméticos Ltda'], fone: '(11) 94321-7788', sit: 'semguia', guias: [], esperadas: 1 },
     { id: 'w5', canal: 'whatsapp', empresas: ['Café Bom Retiro Ltda'], fone: '(11) 93210-5566', sit: 'mao', guias: [gu('CAFÉ BOM RETIRO - Simples Nacional 1 - 11-2026.pdf', 'Simples Nacional', '1', '30/11/2026', 211.9, '7/60')], esperadas: 1, quando: '22/11/2026 às 09:31' },
@@ -1013,7 +1013,7 @@ function enviosVisiveis() {
     if (q && x.empresas.join(' ').toLowerCase().indexOf(q) < 0 && (x.para || []).join(' ').indexOf(q) < 0) return false;
     return true;
   }).sort(function (a, b) {
-    var o = { devolvido: 0, pronto: 1, whats: 2, falta: 3, semguia: 4, enviado: 5, entregue: 6, mao: 7, baixa: 8 };
+    var o = { devolvido: 0, pronto: 1, whats_pronto: 2, whats: 2, falta: 3, semguia: 4, enviado: 5, entregue: 6, mao: 7, baixa: 8 };
     return (o[a.sit] - o[b.sit]) || ((a.ate || 99) - (b.ate || 99));
   });
 }
@@ -1048,7 +1048,7 @@ function telaEnvios() {
         acoes = verB + maoB;
       }
     }
-    if (x.canal === 'whatsapp') acoes = x.sit === 'whats' ? '<button class="btn p fan ico" data-env="' + x.id + '" title="Ver e copiar a mensagem" aria-label="Ver e copiar a mensagem de ' + esc(x.empresas[0]) + '">' + ic('copiar') + '</button><button class="btn p" data-wpp="' + x.id + '">' + ic('check') + 'Marcar como enviado</button>' : x.sit === 'mao' ? '<button class="btn p fan" data-desfazer="' + x.id + '">Desfazer</button>' : '';
+    if (x.canal === 'whatsapp') acoes = (x.sit === 'whats' || x.sit === 'whats_pronto') ? '<button class="btn p fan ico" data-env="' + x.id + '" title="Ver e copiar a mensagem" aria-label="Ver e copiar a mensagem de ' + esc(x.empresas[0]) + '">' + ic('copiar') + '</button><button class="btn p" data-wpp="' + x.id + '">' + ic('check') + 'Marcar como enviado</button>' : x.sit === 'mao' ? '<button class="btn p fan" data-desfazer="' + x.id + '">Desfazer</button>' : '';
     h += '<div class="env-l' + (S.esel[x.id] ? ' sel' : '') + (S.envAberto === x.id ? ' sel' : '') + '" data-linha-env="' + x.id + '"><span class="cbx">' + (x.sit === 'pronto' ? '<input type="checkbox" class="cb" data-esel="' + x.id + '"' + (S.esel[x.id] ? ' checked' : '') + ' aria-label="Selecionar ' + esc(x.empresas[0]) + '">' : '') + '</span>' +
       '<div class="quem"><b title="' + esc(x.empresas.join(' + ')) + '">' + esc(x.empresas.join(' + ')) + '</b><small title="' + esc(dest) + '">' + esc(dest) + '</small></div>' +
       '<span class="c-canal"><span class="canal">' + ic(x.canal === 'email' ? 'mail' : x.canal === 'whatsapp' ? 'wpp' : 'externo') + (x.canal === 'email' ? 'E-mail' : x.canal === 'whatsapp' ? 'WhatsApp' : 'Cliente baixa') + '</span></span>' +
@@ -1102,7 +1102,7 @@ function gavetaEnvio() {
   if (x.canal === 'email' && (x.sit === 'pronto' || x.sit === 'devolvido')) pe = '<button class="btn" data-acao="testeEnv">' + ic('mail') + 'Mandar teste para mim</button><button class="btn fan" data-mail-enviado="' + x.id + '">' + ic('check') + 'Já enviei à mão</button><button class="btn pri" data-acao="enviarEnv" data-id="' + x.id + '" style="margin-left:auto">' + ic('mail') + 'Enviar por e-mail</button>';
   else if (x.canal === 'email' && x.sit === 'mao') pe = '<button class="btn fan" data-desfazer-mail="' + x.id + '">Desfazer marcação</button>';
   else if (x.canal === 'email' && !/enviado|entregue/.test(x.sit) && !TRANS[x.sit]) pe = '<button class="btn fan" data-mail-enviado="' + x.id + '" style="margin-left:auto">' + ic('check') + 'Já enviei à mão</button>';
-  else if (x.canal === 'whatsapp' && x.sit === 'whats') pe = '<button class="btn" data-acao="copiarWpp" data-id="' + x.id + '">' + ic('copiar') + 'Copiar mensagem</button><button class="btn pri" data-wpp="' + x.id + '" style="margin-left:auto">' + ic('check') + 'Marcar como enviado</button>';
+  else if (x.canal === 'whatsapp' && (x.sit === 'whats' || x.sit === 'whats_pronto')) pe = '<button class="btn" data-acao="copiarWpp" data-id="' + x.id + '">' + ic('copiar') + 'Copiar mensagem</button><button class="btn pri" data-wpp="' + x.id + '" style="margin-left:auto">' + ic('check') + 'Marcar como enviado</button>';
   h += pe ? '<div class="g-pe">' + pe + '</div>' : '';
   g.innerHTML = h; g.setAttribute('aria-label', 'Envio de ' + x.empresas[0]);
   g.classList.add('on'); v.classList.add('on'); g.setAttribute('aria-hidden', 'false');
@@ -1779,7 +1779,7 @@ function sobreporStatus() {
     var x = VM.envios.filter(function (y) { return y.empresas.join(' + ') === r.empresas && (r.canal === 'whatsapp' ? y.canal === 'whatsapp' : y.canal === 'email'); })[0];
     if (!x) return;
     var novo = MAP_ST[r.status]; if (!novo) return;
-    var desconhece = /^(pronto|falta|semguia|whats)$/.test(x.sit) || TRANS[x.sit];
+    var desconhece = /^(pronto|falta|semguia|whats|whats_pronto)$/.test(x.sit) || TRANS[x.sit];
     if (!desconhece && Date.parse(r.atualizado_em) < gerado) return;
     if (x.sit === 'entregue' && novo === 'enviado') return;
     x.sit = novo; x.det = r.detalhe || '';
@@ -1934,7 +1934,7 @@ function enviar(chaves, modo, botao) {
 function marcarWpp(chave, desfazer) {
   var x = envioDe(chave); if (!x) return;
   var fim = function () {
-    marcarEnvio(chave, desfazer ? 'whats' : 'mao', desfazer ? '' : 'agora');
+    marcarEnvio(chave, desfazer ? 'whats_pronto' : 'mao', desfazer ? '' : 'agora');
     if (!desfazer) { VM.fila = VM.fila.filter(function (y) { return y.chave !== chave; }); VM.enviados++; } else VM.enviados--;
     aviso(desfazer ? 'Marcação desfeita.' : 'Marcado como enviado pelo WhatsApp.'); S.envAberto = null; desenhar();
     var lw = document.querySelector('[data-linha-env="' + chave + '"]'); if (lw) lw.classList.add('piscar');
