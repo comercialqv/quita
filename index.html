@@ -375,6 +375,7 @@ html,body{overflow-x:hidden}
 /* ============================== Envios ============================== */
 .env-l{display:grid;grid-template-columns:20px minmax(0,1.5fr) 112px 92px 84px 150px 196px;gap:12px;align-items:center;min-height:52px;padding:8px 16px;border-top:1px solid var(--border);font-size:var(--t-13)}
 .env-l .c-guias .venc-sub{display:block;font-size:var(--t-12);color:var(--text-3);font-weight:400;font-variant-numeric:tabular-nums;margin-top:1px;white-space:nowrap}
+.env-l .c-guias .falta-sub{display:block;font-size:var(--t-12);color:var(--warn);font-weight:500;margin-top:1px;white-space:nowrap}
 .env-l:first-child{border-top:0}
 .env-l:hover{background:var(--hover)}
 .env-l.sel{background:var(--accent-wash)}
@@ -1047,7 +1048,16 @@ function telaEnvios() {
     h += '<div class="env-l' + (S.esel[x.id] ? ' sel' : '') + (S.envAberto === x.id ? ' sel' : '') + '" data-linha-env="' + x.id + '"><span class="cbx">' + (x.sit === 'pronto' ? '<input type="checkbox" class="cb" data-esel="' + x.id + '"' + (S.esel[x.id] ? ' checked' : '') + ' aria-label="Selecionar ' + esc(x.empresas[0]) + '">' : '') + '</span>' +
       '<div class="quem"><b title="' + esc(x.empresas.join(' + ')) + '">' + esc(x.empresas.join(' + ')) + '</b><small title="' + esc(dest) + '">' + esc(dest) + '</small></div>' +
       '<span class="c-canal"><span class="canal">' + ic(x.canal === 'email' ? 'mail' : x.canal === 'whatsapp' ? 'wpp' : 'externo') + (x.canal === 'email' ? 'E-mail' : x.canal === 'whatsapp' ? 'WhatsApp' : 'Cliente baixa') + '</span></span>' +
-      '<span class="c-guias num">' + (x.esperadas ? x.guias.length + ' de ' + x.esperadas : '—') + (function () { var vs = {}; (x.guias || []).forEach(function (g) { if (g.venc) vs[g.venc.slice(0, 5)] = 1; }); var ks = Object.keys(vs).sort(function (a, b) { return a.split('/').reverse().join('') < b.split('/').reverse().join('') ? -1 : 1; }); return ks.length ? '<small class="venc-sub">vence ' + ks[0] + (ks.length > 1 ? ' +' + (ks.length - 1) : '') + '</small>' : ''; })() + '</span>' +
+      '<span class="c-guias num">' + (function () {
+        var esp = x.espera_parc != null ? x.espera_parc : (x.esperadas || 0);
+        var cob = esp ? Math.max(0, esp - (x.faltam_guias || 0)) : x.guias.length;
+        var main = esp ? cob + ' de ' + esp : '—';
+        var fs = (x.faltam_guias > 0) ? '<small class="falta-sub">' + (x.conferindo ? 'conferindo ' + x.faltam_guias : 'falta ' + x.faltam_guias) + '</small>' : '';
+        var vv = {}; (x.guias || []).forEach(function (g) { if (g.venc) vv[g.venc.slice(0, 5)] = 1; });
+        var ks = Object.keys(vv).sort(function (a, b) { return a.split('/').reverse().join('') < b.split('/').reverse().join('') ? -1 : 1; });
+        var vs = ks.length ? '<small class="venc-sub">vence ' + ks[0] + (ks.length > 1 ? ' +' + (ks.length - 1) : '') + '</small>' : '';
+        return main + fs + vs;
+      })() + '</span>' +
       '<span class="c-prazo num prz' + (urg ? ' urg' : '') + '">' + (x.canal === 'baixa' ? '—' : String(pz).padStart(2, '0') + '/' + VM.competencia.slice(5) + (urg && pz < dia ? ' <span style="color:var(--risk)">passou</span>' : x.ate ? ' <span class="t3">pedido</span>' : '')) + '</span>' +
       '<span class="c-sit"><span class="selo ' + st[1] + '"' + (x.det ? ' title="' + esc(x.det) + '"' : '') + '>' + esc(st[0]) + '</span>' + (x.quando ? '<span class="quando">' + esc(x.quando) + '</span>' : x.det && (TRANS[x.sit] || /erro|parado|pulado/.test(x.sit)) ? '<span class="quando" title="' + esc(x.det) + '">' + esc(x.det) + '</span>' : '') + '</span>' +
       '<span class="acoes">' + acoes + '</span></div>';
