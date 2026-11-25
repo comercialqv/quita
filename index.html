@@ -1072,9 +1072,28 @@ function telaEnvios() {
   return h;
 }
 function textoWpp(x) {
+  var lk = (S.wppLinks && S.wppLinks[x.id]) || null, porId = {};
+  if (lk) lk.forEach(function (l) { if (l.link) porId[l.id] = l.link; });
   var g = x.guias, t = 'Olá! Seguem ' + (g.length > 1 ? 'as guias dos parcelamentos' : 'a guia do parcelamento') + ' de ' + mesExt(VM.competencia) + ' (' + x.empresas.join(' e ') + '):\n';
-  g.forEach(function (y) { t += '\n• ' + (y.mod ? y.mod + (y.num ? ' nº ' + y.num : '') : y.arq) + (y.parc ? ', parcela ' + y.parc : '') + (y.venc ? ' — vence ' + y.venc : '') + (y.val ? ' — ' + real(y.val) : ''); });
+  g.forEach(function (y) {
+    t += '\n• ' + (y.mod ? y.mod + (y.num ? ' nº ' + y.num : '') : y.arq) + (y.parc ? ', parcela ' + y.parc : '') + (y.venc ? ' — vence ' + y.venc : '') + (y.val ? ' — ' + real(y.val) : '');
+    if (porId[y.id]) t += '\n' + porId[y.id];
+  });
   return t + '\n\nQualquer dúvida, estou à disposição.\nLucas · Queiroz & Venâncio';
+}
+function carregarLinksWpp(x, depois) {
+  if (!REAL || !x.guias.length) return depois && depois();
+  if (S.wppLinks && S.wppLinks[x.id]) return depois && depois();
+  api('quitaLinksGuias', VM.competencia, x.id).then(function (r) {
+    S.wppLinks = S.wppLinks || {}; S.wppLinks[x.id] = (r && r.guias) || [];
+    if (depois) depois();
+  }).catch(function () { if (depois) depois(); });
+}
+function copiarMensagemWpp(x) {
+  var tem = function () { return S.wppLinks && S.wppLinks[x.id] && S.wppLinks[x.id].some(function (l) { return l.link; }); };
+  var faz = function () { try { navigator.clipboard.writeText(textoWpp(x)); } catch (e) { } aviso('Mensagem copiada' + (tem() ? ' com o link das guias' : '') + '. Cole no WhatsApp do cliente.'); };
+  if (!REAL || !x.guias.length || (S.wppLinks && S.wppLinks[x.id])) return faz();
+  carregarLinksWpp(x, function () { if (S.envAberto === x.id) gavetaEnvio(); faz(); });
 }
 function baixarGuias(x) {
   var ids = (x.guias || []).map(function (y) { var m = (y.link || '').match(/\/d\/([-\w]+)/) || (y.link || '').match(/[?&]id=([-\w]+)/); return m ? m[1] : ''; }).filter(Boolean);
@@ -1096,7 +1115,8 @@ function gavetaEnvio() {
     '<h2 style="grid-column:1/3">' + esc(x.empresas.join(' + ')) + '</h2></div><div class="g-corpo">';
   if (x.motivo) h += '<section class="pnl" style="padding:12px 14px;border-color:color-mix(in srgb,var(--risk) 40%,var(--border))"><b style="font-weight:600">O e-mail voltou</b><p class="t2" style="margin:4px 0 0;font-size:var(--t-13)">' + esc(x.motivo) + '</p></section>';
   if (x.canal === 'whatsapp') {
-    h += '<section><h3>Mensagem para o WhatsApp' + (x.fone ? ' · ' + esc(x.fone) : '') + '</h3><div class="msg-wpp">' + esc(textoWpp(x)) + '</div><p class="nota" style="margin:8px 0 0">Copie a mensagem e anexe as guias: baixe os PDFs ou abra a pasta no Drive para copiar de lá.</p></section>';
+    var temLk = S.wppLinks && S.wppLinks[x.id], gerando = REAL && x.guias.length && !temLk;
+    h += '<section><h3>Mensagem para o WhatsApp' + (x.fone ? ' · ' + esc(x.fone) : '') + '</h3><div class="msg-wpp">' + esc(textoWpp(x)) + '</div><p class="nota" style="margin:8px 0 0">' + (gerando ? 'Gerando o link de cada guia…' : 'A mensagem já traz o link de cada guia (abre direto no Drive). Se preferir anexar o PDF, use Baixar guias ou Abrir pasta.') + '</p></section>';
   } else {
     var tot = 0; x.guias.forEach(function (y) { tot += y.val || 0; });
     var comParc = x.guias.some(function (y) { return y.parc; });
@@ -1119,6 +1139,10 @@ function gavetaEnvio() {
   g.innerHTML = h; g.setAttribute('aria-label', 'Envio de ' + x.empresas[0]);
   g.classList.add('on'); v.classList.add('on'); g.setAttribute('aria-hidden', 'false');
   setTimeout(function () { var b = g.querySelector('[data-acao="fecharGaveta"]'); if (b) b.focus(); }, 30);
+  if (x.canal === 'whatsapp' && REAL && x.guias.length && !(S.wppLinks && S.wppLinks[x.id]) && S.wppFetch !== x.id) {
+    S.wppFetch = x.id;
+    carregarLinksWpp(x, function () { S.wppFetch = null; if (S.envAberto === x.id) gavetaEnvio(); });
+  }
 }
 function gaveta() {
   var gv0 = document.getElementById('gaveta'); if (gv0) gv0.classList.remove('larga');
@@ -2362,7 +2386,7 @@ document.addEventListener('click', function (ev) {
   if (ac === 'enviarEnv' && REAL) { S.envAberto = null; return enviar([a.getAttribute('data-id')], 'email', a); }
   if (ac === 'enviarEnv') { a.classList.add('carregando'); var ide = a.getAttribute('data-id'); setTimeout(function () { marcarEnvio(ide, 'enviado', 'agora'); delete S.esel[ide]; S.envAberto = null; aviso('Enviado por e-mail.'); desenhar(); }, 900); return; }
   if (ac === 'testeEnv') { if (REAL) return enviar([S.envAberto], 'teste', a); return aviso('Teste enviado para a sua caixa.'); }
-  if (ac === 'copiarWpp') { var xw = VM.envios.filter(function (y) { return y.id === a.getAttribute('data-id'); })[0]; try { navigator.clipboard.writeText(textoWpp(xw)); } catch (e) { } return aviso('Mensagem copiada. Cole no WhatsApp do cliente.'); }
+  if (ac === 'copiarWpp') { var xw = VM.envios.filter(function (y) { return y.id === a.getAttribute('data-id'); })[0]; if (xw) copiarMensagemWpp(xw); return; }
   if (ac === 'baixarGuias') { var xg = VM.envios.filter(function (y) { return y.id === a.getAttribute('data-id'); })[0]; if (xg) baixarGuias(xg); return; }
   if (ac === 'abrirPastaWpp') { var xp = VM.envios.filter(function (y) { return y.id === a.getAttribute('data-id'); })[0]; if (xp) abrirPastas(xp); return; }
   if (ac === 'convite') { try { navigator.clipboard.writeText('Olá! Para facilitar, a partir do próximo mês podemos mandar as guias dos parcelamentos por e-mail, já com valor e vencimento de cada uma. Qual e-mail devemos usar? Lucas · Queiroz & Venâncio'); } catch (e) { } return aviso('Convite copiado. Cole na conversa do cliente.'); }
