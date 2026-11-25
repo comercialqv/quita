@@ -374,6 +374,7 @@ html,body{overflow-x:hidden}
 
 /* ============================== Envios ============================== */
 .env-l{display:grid;grid-template-columns:20px minmax(0,1.5fr) 112px 92px 84px 150px 196px;gap:12px;align-items:center;min-height:52px;padding:8px 16px;border-top:1px solid var(--border);font-size:var(--t-13)}
+.env-l .c-guias .venc-sub{display:block;font-size:var(--t-12);color:var(--text-3);font-weight:400;font-variant-numeric:tabular-nums;margin-top:1px;white-space:nowrap}
 .env-l:first-child{border-top:0}
 .env-l:hover{background:var(--hover)}
 .env-l.sel{background:var(--accent-wash)}
@@ -931,8 +932,7 @@ function telaGuias() {
   todos.forEach(function (c) { c.guias.forEach(function (g) { if (g.rep) { nRep++; return; } nGuias++; if (!g.qv) total += g.val || 0; }); });
   var esperam = todos.filter(function (c) { return c.sit === 'pronto' || c.sit === 'falta'; }).length;
   var h = '<div class="cab-tela"><div><h1 class="titulo">Guias do mês</h1><p class="resumo"><b>' + n('pronto') + '</b> de ' + esperam + ' clientes com guias prontas · <b>' + nGuias + '</b> guias · <b>' + real(total) + '</b> para os clientes pagarem</p></div>' +
-    '<div style="margin-left:auto;display:flex;gap:8px"><button class="btn" data-abrir="' + esc((VM.links || {}).pastaMes || '') + '">' + ic('pasta') + 'Abrir pasta de ' + esc(MESES[+VM.competencia.slice(5) - 1]) + '</button><button class="btn" data-acao="lerGuias">' + ic('relogio') + 'Ler guias novas</button><button class="btn pri" data-acao="abrirAnexar">' + ic('upload') + 'Anexar guias</button></div></div>';
-  if (S.anexoAberto) h += painelAnexar();
+    '<div style="margin-left:auto;display:flex;gap:8px"><button class="btn" data-abrir="' + esc((VM.links || {}).pastaMes || '') + '">' + ic('pasta') + 'Abrir pasta de ' + esc(MESES[+VM.competencia.slice(5) - 1]) + '</button><button class="btn" data-acao="lerGuias">' + ic('relogio') + 'Ler guias novas</button><button class="btn pri" data-tela="anexar">' + ic('upload') + 'Anexar guias</button></div></div>';
   if (d.entrada && d.entrada.length) h += '<div class="pnl entrada" role="status">' + ic('alerta') + '<div><b style="font-weight:600">' + plural(d.entrada.length, 'arquivo na _Entrada sem empresa reconhecida', 'arquivos na _Entrada sem empresa reconhecida') + '</b><span class="t2" style="font-size:var(--t-13)"> · renomeie com o nome da empresa ou mova para a pasta dela</span><ul>' + d.entrada.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>';
   var abas = [['todos', 'Todos', todos.length], ['falta', 'Falta guia', n('falta')], ['pronto', 'Prontos', n('pronto')], ['qv', 'Q&V paga', n('qv')], ['outros', 'Baixa ou manual', n('baixa') + n('manual') + n('reimp')]];
   if (nRep) abas.push(['rep', 'Repetidas', nRep]);
@@ -1034,12 +1034,20 @@ function telaEnvios() {
     var st = SIT_E[x.sit], pz = prazoEnvio(x), urg = !/enviado|entregue|mao|baixa/.test(x.sit) && pz - dia <= 3;
     var dest = x.canal === 'email' ? x.para.join(', ') + (x.cc.length ? ' · cc ' + x.cc.join(', ') : '') : x.canal === 'whatsapp' ? (x.fone || 'recebe pelo WhatsApp') : 'entra no gov.br e baixa a guia';
     var acoes = '';
-    if (x.canal === 'email') acoes = TRANS[x.sit] ? '' : x.sit === 'pronto' || x.sit === 'devolvido' || x.sit === 'erro' || x.sit === 'pulado' ? '<button class="btn p" data-env="' + x.id + '">' + ic('mail') + (x.sit === 'pronto' ? 'Ver e enviar' : 'Ver e reenviar') + '</button>' : x.sit === 'falta' ? '<button class="btn p fan" data-env="' + x.id + '">Ver o que falta</button>' : '<button class="btn p fan" data-env="' + x.id + '">Ver e-mail</button>';
+    if (x.canal === 'email') {
+      if (TRANS[x.sit]) acoes = '';
+      else if (x.sit === 'mao') acoes = '<button class="btn p fan" data-desfazer-mail="' + x.id + '">Desfazer</button>';
+      else {
+        var verB = (x.sit === 'pronto' || x.sit === 'devolvido' || x.sit === 'erro' || x.sit === 'pulado') ? '<button class="btn p" data-env="' + x.id + '">' + ic('mail') + (x.sit === 'pronto' ? 'Ver e enviar' : 'Ver e reenviar') + '</button>' : x.sit === 'falta' ? '<button class="btn p fan" data-env="' + x.id + '">Ver o que falta</button>' : '<button class="btn p fan" data-env="' + x.id + '">Ver e-mail</button>';
+        var maoB = /enviado|entregue/.test(x.sit) ? '' : '<button class="btn p fan ico" data-mail-enviado="' + x.id + '" title="Já enviei à mão (fora do sistema)" aria-label="Marcar ' + esc(x.empresas[0]) + ' como enviado à mão">' + ic('check') + '</button>';
+        acoes = verB + maoB;
+      }
+    }
     if (x.canal === 'whatsapp') acoes = x.sit === 'whats' ? '<button class="btn p fan ico" data-env="' + x.id + '" title="Ver e copiar a mensagem" aria-label="Ver e copiar a mensagem de ' + esc(x.empresas[0]) + '">' + ic('copiar') + '</button><button class="btn p" data-wpp="' + x.id + '">' + ic('check') + 'Marcar como enviado</button>' : x.sit === 'mao' ? '<button class="btn p fan" data-desfazer="' + x.id + '">Desfazer</button>' : '';
     h += '<div class="env-l' + (S.esel[x.id] ? ' sel' : '') + (S.envAberto === x.id ? ' sel' : '') + '" data-linha-env="' + x.id + '"><span class="cbx">' + (x.sit === 'pronto' ? '<input type="checkbox" class="cb" data-esel="' + x.id + '"' + (S.esel[x.id] ? ' checked' : '') + ' aria-label="Selecionar ' + esc(x.empresas[0]) + '">' : '') + '</span>' +
       '<div class="quem"><b title="' + esc(x.empresas.join(' + ')) + '">' + esc(x.empresas.join(' + ')) + '</b><small title="' + esc(dest) + '">' + esc(dest) + '</small></div>' +
       '<span class="c-canal"><span class="canal">' + ic(x.canal === 'email' ? 'mail' : x.canal === 'whatsapp' ? 'wpp' : 'externo') + (x.canal === 'email' ? 'E-mail' : x.canal === 'whatsapp' ? 'WhatsApp' : 'Cliente baixa') + '</span></span>' +
-      '<span class="c-guias num">' + (x.esperadas ? x.guias.length + ' de ' + x.esperadas : '—') + '</span>' +
+      '<span class="c-guias num">' + (x.esperadas ? x.guias.length + ' de ' + x.esperadas : '—') + (function () { var vs = {}; (x.guias || []).forEach(function (g) { if (g.venc) vs[g.venc.slice(0, 5)] = 1; }); var ks = Object.keys(vs).sort(function (a, b) { return a.split('/').reverse().join('') < b.split('/').reverse().join('') ? -1 : 1; }); return ks.length ? '<small class="venc-sub">vence ' + ks[0] + (ks.length > 1 ? ' +' + (ks.length - 1) : '') + '</small>' : ''; })() + '</span>' +
       '<span class="c-prazo num prz' + (urg ? ' urg' : '') + '">' + (x.canal === 'baixa' ? '—' : String(pz).padStart(2, '0') + '/' + VM.competencia.slice(5) + (urg && pz < dia ? ' <span style="color:var(--risk)">passou</span>' : x.ate ? ' <span class="t3">pedido</span>' : '')) + '</span>' +
       '<span class="c-sit"><span class="selo ' + st[1] + '"' + (x.det ? ' title="' + esc(x.det) + '"' : '') + '>' + esc(st[0]) + '</span>' + (x.quando ? '<span class="quando">' + esc(x.quando) + '</span>' : x.det && (TRANS[x.sit] || /erro|parado|pulado/.test(x.sit)) ? '<span class="quando" title="' + esc(x.det) + '">' + esc(x.det) + '</span>' : '') + '</span>' +
       '<span class="acoes">' + acoes + '</span></div>';
@@ -1077,7 +1085,9 @@ function gavetaEnvio() {
   }
   h += '<section><h3>' + (x.guias.length ? plural(x.guias.length, 'anexo', 'anexos') : 'Sem anexos') + '</h3><div class="anexos">' + x.guias.map(function (y) { return '<div class="anexo"' + (y.link ? ' data-abrir="' + esc(y.link) + '" style="cursor:pointer"' : '') + '>' + ic('guias') + '<span title="' + esc(y.arq) + '">' + esc(y.arq) + '</span><small>' + y.kb + ' KB</small></div>'; }).join('') + '</div></section></div>';
   var pe = '';
-  if (x.canal === 'email' && (x.sit === 'pronto' || x.sit === 'devolvido')) pe = '<button class="btn" data-acao="testeEnv">' + ic('mail') + 'Mandar teste para mim</button><button class="btn pri" data-acao="enviarEnv" data-id="' + x.id + '" style="margin-left:auto">' + ic('mail') + 'Enviar por e-mail</button>';
+  if (x.canal === 'email' && (x.sit === 'pronto' || x.sit === 'devolvido')) pe = '<button class="btn" data-acao="testeEnv">' + ic('mail') + 'Mandar teste para mim</button><button class="btn fan" data-mail-enviado="' + x.id + '">' + ic('check') + 'Já enviei à mão</button><button class="btn pri" data-acao="enviarEnv" data-id="' + x.id + '" style="margin-left:auto">' + ic('mail') + 'Enviar por e-mail</button>';
+  else if (x.canal === 'email' && x.sit === 'mao') pe = '<button class="btn fan" data-desfazer-mail="' + x.id + '">Desfazer marcação</button>';
+  else if (x.canal === 'email' && !/enviado|entregue/.test(x.sit) && !TRANS[x.sit]) pe = '<button class="btn fan" data-mail-enviado="' + x.id + '" style="margin-left:auto">' + ic('check') + 'Já enviei à mão</button>';
   else if (x.canal === 'whatsapp' && x.sit === 'whats') pe = '<button class="btn" data-acao="copiarWpp" data-id="' + x.id + '">' + ic('copiar') + 'Copiar mensagem</button><button class="btn pri" data-wpp="' + x.id + '" style="margin-left:auto">' + ic('check') + 'Marcar como enviado</button>';
   h += pe ? '<div class="g-pe">' + pe + '</div>' : '';
   g.innerHTML = h; g.setAttribute('aria-label', 'Envio de ' + x.empresas[0]);
@@ -1918,6 +1928,18 @@ function marcarWpp(chave, desfazer) {
   if (!REAL) return fim();
   api('quitaMarcar', VM.competencia, x.empresas, !!desfazer).then(fim).catch(falhou);
 }
+function marcarEmailMao(chave, desfazer) {
+  var x = envioDe(chave); if (!x) return;
+  var fim = function () {
+    marcarEnvio(chave, desfazer ? 'pronto' : 'mao', desfazer ? '' : 'agora');
+    if (!desfazer) { VM.fila = VM.fila.filter(function (y) { return y.chave !== chave; }); VM.enviados++; } else VM.enviados--;
+    aviso(desfazer ? 'Marcação desfeita.' : 'E-mail marcado como enviado à mão. Ele entra na conferência do Outlook na próxima vez que você conferir os envios.');
+    S.envAberto = null; desenhar();
+    var lw = document.querySelector('[data-linha-env="' + chave + '"]'); if (lw) lw.classList.add('piscar');
+  };
+  if (!REAL) return fim();
+  api('quitaMarcarEmail', VM.competencia, x.empresas, !!desfazer).then(fim).catch(falhou);
+}
 function rodar(opcoes, botao) {
   if (botao) botao.classList.add('carregando');
   var ok = function (r) {
@@ -2033,11 +2055,20 @@ function telaErro() {
 
 
 /* ============================== anexar guias ============================== */
-function painelAnexar() {
+function telaAnexar() {
+  if (S.estado === 'carregando' || !VM) return esqueletoTabela('Anexar guias');
+  var d = VM.guias || { entrada: [] };
+  var h = '<div class="cab-tela"><div><h1 class="titulo">Anexar guias</h1><p class="resumo">Arraste os PDFs das guias aqui. Vão para a pasta de ' + esc(mesExt(VM.competencia)) + ' da empresa, já lidos e com o nome padrão.</p></div>' +
+    '<div style="margin-left:auto;display:flex;gap:8px"><button class="btn" data-abrir="' + esc((VM.links || {}).pastaMes || '') + '">' + ic('pasta') + 'Abrir pasta de ' + esc(MESES[+VM.competencia.slice(5) - 1]) + '</button><button class="btn" data-tela="guias">' + ic('guias') + 'Ver guias do mês</button></div></div>';
+  h += painelAnexar(true);
+  if (d.entrada && d.entrada.length) h += '<div class="pnl entrada" role="status">' + ic('alerta') + '<div><b style="font-weight:600">' + plural(d.entrada.length, 'arquivo na _Entrada sem empresa reconhecida', 'arquivos na _Entrada sem empresa reconhecida') + '</b><span class="t2" style="font-size:var(--t-13)"> · renomeie com o nome da empresa ou mova para a pasta dela</span><ul>' + d.entrada.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>';
+  return h;
+}
+function painelAnexar(standalone) {
   var emps = (VM.clientes || []).filter(function (c) { return c.ativos > 0; }).map(function (c) { return c.cli; });
-  if (!emps.length) emps = (VM.guias.clientes || []).map(function (c) { return c.cli; });
-  var h = '<section class="pnl anexar" aria-label="Anexar guias"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-weight:600">Anexar guias</b><span class="t2" style="font-size:var(--t-13)">Os PDFs vão para a pasta de ' + esc(mesExt(VM.competencia)) + ' da empresa, já lidos e com o nome padrão.</span>' +
-    '<button class="btn fan p ico" data-acao="fecharAnexar" aria-label="Fechar" style="margin-left:auto">' + ic('x') + '</button></div>' +
+  if (!emps.length) emps = ((VM.guias || {}).clientes || []).map(function (c) { return c.cli; });
+  var topo = standalone ? '' : '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-weight:600">Anexar guias</b><span class="t2" style="font-size:var(--t-13)">Os PDFs vão para a pasta de ' + esc(mesExt(VM.competencia)) + ' da empresa, já lidos e com o nome padrão.</span><button class="btn fan p ico" data-acao="fecharAnexar" aria-label="Fechar" style="margin-left:auto">' + ic('x') + '</button></div>';
+  var h = '<section class="pnl anexar" aria-label="Anexar guias">' + topo +
     '<div class="campos" style="grid-template-columns:auto minmax(0,360px)"><label for="anx-emp">Empresa</label><select id="anx-emp" data-anx-emp><option value="">Reconhecer sozinho (pelo nome ou pelo conteúdo do PDF)</option>' +
     emps.sort().map(function (e) { return '<option' + (S.anexoEmpresa === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></div>' +
     '<label class="drop" id="drop">' + ic('upload') + '<b>Arraste os PDFs aqui</b><span>ou clique para escolher no computador ou no celular</span><input type="file" accept="application/pdf,.pdf" multiple data-anx-arq></label>';
@@ -2063,7 +2094,7 @@ function anexar(lista) {
   S.anexoAberto = true;
   var novos = arqs.map(function (f) { return { nome: f.name, st: 'fila', arq: f }; });
   S.anexos = S.anexos.concat(novos);
-  if (S.tela !== 'guias') { S.tela = 'guias'; desenhar(); } else desenharConteudo();
+  if (S.tela !== 'anexar') { S.tela = 'anexar'; desenhar(); } else desenharConteudo();
   var emp = S.anexoEmpresa || '';
   var seq = Promise.resolve();
   novos.forEach(function (a) {
@@ -2189,7 +2220,7 @@ function gavetaCli() {
 }
 
 /* ============================== desenho geral ============================== */
-var TELA_FN = { hoje: function () { return telaHoje(); }, parcelamentos: function () { return telaParcelamentos(); }, guias: function () { return telaGuias(); }, envios: function () { return telaEnvios(); }, rodadas: function () { return telaRodadas(); }, clientes: function () { return telaClientes(); }, config: function () { return telaConfig(); }, mais: function () { return telaMais(); }, planilha: function () { return telaPlanilha(); } };
+var TELA_FN = { hoje: function () { return telaHoje(); }, parcelamentos: function () { return telaParcelamentos(); }, guias: function () { return telaGuias(); }, envios: function () { return telaEnvios(); }, rodadas: function () { return telaRodadas(); }, clientes: function () { return telaClientes(); }, config: function () { return telaConfig(); }, mais: function () { return telaMais(); }, planilha: function () { return telaPlanilha(); }, anexar: function () { return telaAnexar(); } };
 function desenharConteudo() { var c = document.getElementById('conteudo'); c.innerHTML = (TELA_FN[S.tela] || TELA_FN.hoje)(); }
 function desenhar() {
   desenharLateral(); desenharTopo(); desenharFaixa();
@@ -2221,7 +2252,7 @@ document.addEventListener('click', function (ev) {
   if (t.id === 'veu') return fecharBusca();
   var e = t.closest('[data-estado]'); if (e) return carregarDemo(e.getAttribute('data-estado'));
   var f = t.closest('[data-fechar]'); if (f) { S.faixaFechada[f.getAttribute('data-fechar')] = true; return desenharFaixa(); }
-  var nv = t.closest('[data-tela]'); if (nv) { S.tela = nv.getAttribute('data-tela'); if (S.tela === 'anexar') { S.tela = 'guias'; S.anexoAberto = true; } S.confirmaRodada = false; S.parcAberto = null; S.envAberto = null; S.cliAberto = null; S.parcEdit = false; S.cliEdit = false; S.novoParc = false; return desenhar(); }
+  var nv = t.closest('[data-tela]'); if (nv) { S.tela = nv.getAttribute('data-tela'); S.confirmaRodada = false; S.parcAberto = null; S.envAberto = null; S.cliAberto = null; S.parcEdit = false; S.cliEdit = false; S.novoParc = false; return desenhar(); }
   if (t.matches('[data-sel]')) { S.sel[t.getAttribute('data-sel')] = t.checked; var l = t.closest('.lin'); if (l) l.classList.toggle('sel', t.checked); return desenharLote(); }
   var ln = t.closest('[data-linha]');
   if (ln) {
@@ -2256,6 +2287,8 @@ document.addEventListener('click', function (ev) {
   var ev2 = t.closest('[data-env]'); if (ev2) { S.envAberto = ev2.getAttribute('data-env'); desenharConteudo(); return gavetaEnvio(); }
   var wp = t.closest('[data-wpp]'); if (wp) { wp.classList.add('carregando'); return marcarWpp(wp.getAttribute('data-wpp')); }
   var dz = t.closest('[data-desfazer]'); if (dz) { dz.classList.add('carregando'); return marcarWpp(dz.getAttribute('data-desfazer'), true); }
+  var me2 = t.closest('[data-mail-enviado]'); if (me2) { me2.classList.add('carregando'); return marcarEmailMao(me2.getAttribute('data-mail-enviado')); }
+  var dm = t.closest('[data-desfazer-mail]'); if (dm) { dm.classList.add('carregando'); return marcarEmailMao(dm.getAttribute('data-desfazer-mail'), true); }
   var ga = t.closest('[data-gf-aba]'); if (ga) { S.gf.aba = ga.getAttribute('data-gf-aba'); return desenharConteudo(); }
   var pa = t.closest('[data-pf-aba]'); if (pa) { S.pf.aba = pa.getAttribute('data-pf-aba'); return desenharConteudo(); }
   var po = t.closest('[data-pf-ord]'); if (po) { var c = po.getAttribute('data-pf-ord'); S.pf.dir = S.pf.ord === c ? -S.pf.dir : 1; S.pf.ord = c; return desenharConteudo(); }
