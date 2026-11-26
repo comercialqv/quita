@@ -357,6 +357,9 @@ html,body{overflow-x:hidden}
 .gm-guia.falta .i{color:var(--warn)}
 .gm-guia.rep{opacity:.6}
 .gm-guia.rep .arq{text-decoration:line-through;text-decoration-color:var(--text-3)}
+.gm-guia .acao{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.sel-sit{font:inherit;font-size:var(--t-12);padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;max-width:170px}
+.sel-sit:hover{background:var(--hover);color:var(--text)}
 .gm-nota{padding:8px 16px 12px 46px;color:var(--text-2);font-size:var(--t-13);border-top:1px solid var(--border)}
 .entrada{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;margin-bottom:16px}
 .entrada .i{color:var(--warn);margin-top:2px}
@@ -918,7 +921,7 @@ function demoGuias() {
     if (!por[p.cli]) { por[p.cli] = { cli: p.cli, cnpj: p.cnpj, guias: [], falta: [], canal: p.canal }; ordem.push(p.cli); }
     var c = por[p.cli], i = +p.id.slice(1);
     var curto = p.mod === 'Simplificado' ? String(p.num).replace(/\D/g, '').slice(-10) : p.num;
-    if (i === 6 || i === 12) { c.falta.push(p.mod + ' ' + curto); return; }
+    if (i === 6 || i === 12) { c.falta.push({ rot: p.mod + ' ' + curto, linha: p.linha || (12 + i * 3), num: curto, tipo: p.mod }); return; }
     c.guias.push({ id: 'g' + i, arq: p.cli.toUpperCase().replace(/ LTDA$/, '') + ' - ' + p.mod + ' ' + curto + ' - 11-2026.pdf', mod: p.mod, num: curto,
       parc: p.mod === 'Simples Nacional' ? p.parc : '', venc: '30/11/2026', val: p.val, qv: p.paga === 'qv' });
     if (i === 2) c.guias.push({ id: 'g' + i + 'b', arq: c.guias[c.guias.length - 1].arq.replace('.pdf', ' (2).pdf'), mod: p.mod, num: curto, parc: '', venc: '30/11/2026', val: p.val, rep: true });
@@ -967,7 +970,9 @@ function telaGuias() {
         '<span class="so-mob">' + esc(g.mod ? g.mod + ' nº ' + g.num : '') + (g.venc ? ' · vence ' + esc(g.venc.slice(0, 5)) : '') + '</span></div>';
     });
     c.falta.forEach(function (x) {
-      h += '<div class="gm-guia falta">' + ic('alerta') + '<span class="arq">Falta: ' + esc(x) + '</span><span class="det">A guia ainda não chegou na pasta</span><span class="venc"></span><span></span><span class="acao"><button class="btn p fan" data-abrir="' + esc(c.pasta || (VM.links || {}).pastaMes || (VM.links || {}).entrada || '') + '">' + ic('pasta') + 'Abrir pasta</button></span></div>';
+      var rot = (typeof x === 'string') ? x : (x.rot || ''), linha = (x && x.linha) ? x.linha : 0;
+      var sit = linha ? '<select class="sel-sit" data-sit-linha="' + linha + '" data-sit-emp="' + esc(c.cli) + '" data-sit-num="' + esc((x && x.num) || '') + '" data-sit-rot="' + esc(rot) + '" aria-label="Alterar situação de ' + esc(rot) + '"><option value="">Mudar situação…</option>' + ['Rompido', 'Cancelado', 'Concluído', 'Aguardando celebração', 'Atualizar', 'Ativo'].map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('') + '</select>' : '';
+      h += '<div class="gm-guia falta">' + ic('alerta') + '<span class="arq">Falta: ' + esc(rot) + '</span><span class="det">A guia ainda não chegou na pasta</span><span class="venc"></span><span></span><span class="acao">' + sit + '<button class="btn p fan" data-abrir="' + esc(c.pasta || (VM.links || {}).pastaMes || (VM.links || {}).entrada || '') + '">' + ic('pasta') + 'Abrir pasta</button></span></div>';
     });
     if (c.nota) h += '<div class="gm-nota">' + esc(c.nota) + '</div>';
     h += '</section>';
@@ -2423,7 +2428,20 @@ document.addEventListener('input', function (ev) {
 });
 document.addEventListener('change', function (ev) {
   if (ev.target.matches('[data-anx-arq]')) { anexar(ev.target.files); ev.target.value = ''; return; }
-  if (ev.target.matches('[data-anx-emp]')) { S.anexoEmpresa = ev.target.value; return; } if (ev.target.matches('[data-pf-mod]')) { S.pf.mod = ev.target.value; desenharConteudo(); } if (ev.target.matches('[data-ef-canal]')) { S.ef.canal = ev.target.value; desenharConteudo(); } });
+  if (ev.target.matches('[data-anx-emp]')) { S.anexoEmpresa = ev.target.value; return; } if (ev.target.matches('[data-pf-mod]')) { S.pf.mod = ev.target.value; desenharConteudo(); } if (ev.target.matches('[data-ef-canal]')) { S.ef.canal = ev.target.value; desenharConteudo(); }
+  if (ev.target.matches('[data-sit-linha]')) { mudarSituacao(ev.target); return; } });
+function mudarSituacao(sel) {
+  var nova = sel.value; if (!nova) return;
+  var linha = +sel.getAttribute('data-sit-linha'), emp = sel.getAttribute('data-sit-emp'), num = sel.getAttribute('data-sit-num'), rot = sel.getAttribute('data-sit-rot') || '';
+  var inativo = /romp|cancel|conclu|encerr|inativ|exclu|liquid|quitad/i.test(nova);
+  if (!confirm('Mudar a situação de "' + rot + '" (' + emp + ') para "' + nova + '"?' + (inativo ? '\n\nEle sai da lista de pendências do mês.' : ''))) { sel.value = ''; return; }
+  if (!REAL) { aviso('Situação de "' + rot + '" alterada para ' + nova + '.'); return; }
+  sel.disabled = true;
+  api('quitaMudarSituacao', { linha: linha, situacao: nova, mes: mesBase(), conferir: { empresa: emp, numero: num } }).then(function (r) {
+    aviso('Situação de "' + rot + '" alterada para ' + nova + '.' + (r && r.inativo ? ' Saiu das pendências.' : ''));
+    if (SITE) { S.atualizando = true; desenharTopo(); api('quitaSincronizar', mesBase()).then(function (d) { S.atualizando = false; S.geradoEm = new Date().toISOString(); aplicarVM(d, true); }).catch(function () { S.atualizando = false; desenharTopo(); }); }
+  }).catch(function (e) { sel.disabled = false; sel.value = ''; falhou(e); });
+}
 document.getElementById('pbusca').addEventListener('input', function (ev) { filtrarBusca(ev.target.value); });
 
 function salvarConfig(qual, botao) {
