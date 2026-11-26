@@ -971,7 +971,7 @@ function telaGuias() {
     });
     c.falta.forEach(function (x) {
       var rot = (typeof x === 'string') ? x : (x.rot || ''), linha = (x && x.linha) ? x.linha : 0;
-      var sit = linha ? '<select class="sel-sit" data-sit-linha="' + linha + '" data-sit-emp="' + esc(c.cli) + '" data-sit-num="' + esc((x && x.num) || '') + '" data-sit-rot="' + esc(rot) + '" aria-label="Alterar situação de ' + esc(rot) + '"><option value="">Mudar situação…</option><option value="__baixa">Cliente baixa sozinho</option><optgroup label="Situação">' + ['Rompido', 'Cancelado', 'Concluído', 'Aguardando celebração', 'Atualizar', 'Ativo'].map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('') + '</optgroup></select>' : '';
+      var sit = linha ? '<select class="sel-sit" data-sit-linha="' + linha + '" data-sit-emp="' + esc(c.cli) + '" data-sit-num="' + esc((x && x.num) || '') + '" data-sit-rot="' + esc(rot) + '" aria-label="Alterar situação de ' + esc(rot) + '"><option value="">Mudar situação…</option><option value="__baixames">Baixar esse mês</option><option value="__baixa">Cliente baixa sozinho</option><optgroup label="Situação">' + ['Rompido', 'Cancelado', 'Concluído', 'Aguardando celebração', 'Atualizar', 'Ativo'].map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('') + '</optgroup></select>' : '';
       h += '<div class="gm-guia falta">' + ic('alerta') + '<span class="arq">Falta: ' + esc(rot) + '</span><span class="det">A guia ainda não chegou na pasta</span><span class="venc"></span><span></span><span class="acao">' + sit + '<button class="btn p fan" data-abrir="' + esc(c.pasta || (VM.links || {}).pastaMes || (VM.links || {}).entrada || '') + '">' + ic('pasta') + 'Abrir pasta</button></span></div>';
     });
     if (c.nota) h += '<div class="gm-nota">' + esc(c.nota) + '</div>';
@@ -2433,17 +2433,22 @@ document.addEventListener('change', function (ev) {
 function mudarSituacao(sel) {
   var nova = sel.value; if (!nova) return;
   var linha = +sel.getAttribute('data-sit-linha'), emp = sel.getAttribute('data-sit-emp'), num = sel.getAttribute('data-sit-num'), rot = sel.getAttribute('data-sit-rot') || '';
-  var baixa = nova === '__baixa';
+  var baixa = nova === '__baixa', baixaMes = nova === '__baixames';
   var inativo = /romp|cancel|conclu|encerr|inativ|exclu|liquid|quitad/i.test(nova);
-  var msg = baixa ? 'Marcar "' + rot + '" (' + emp + ') como o cliente baixa a guia sozinho?\n\nEle deixa de ser cobrado e sai da lista de pendências.'
+  var msg = baixaMes ? 'Dar baixa em "' + rot + '" (' + emp + ') só neste mês?\n\nSai da pendência do mês. No próximo mês volta a ser cobrado normalmente.'
+                  : baixa ? 'Marcar "' + rot + '" (' + emp + ') como o cliente baixa a guia sozinho?\n\nEle deixa de ser cobrado e sai da lista de pendências, todo mês, até você mudar.'
                   : 'Mudar a situação de "' + rot + '" (' + emp + ') para "' + nova + '"?' + (inativo ? '\n\nEle sai da lista de pendências do mês.' : '');
   if (!confirm(msg)) { sel.value = ''; return; }
-  var okmsg = baixa ? '"' + rot + '" marcado como cliente baixa sozinho. Saiu das pendências.' : 'Situação de "' + rot + '" alterada para ' + nova + '.';
+  var okmsg = baixaMes ? '"' + rot + '" baixado neste mês. Saiu das pendências.'
+            : baixa ? '"' + rot + '" marcado como cliente baixa sozinho. Saiu das pendências.'
+            : 'Situação de "' + rot + '" alterada para ' + nova + '.';
   if (!REAL) { aviso(okmsg); return; }
   sel.disabled = true;
-  var args = baixa ? { linha: linha, baixa: true, mes: mesBase(), conferir: { empresa: emp, numero: num } } : { linha: linha, situacao: nova, mes: mesBase(), conferir: { empresa: emp, numero: num } };
+  var args = baixaMes ? { linha: linha, baixaMes: true, mes: mesBase(), conferir: { empresa: emp, numero: num } }
+           : baixa ? { linha: linha, baixa: true, mes: mesBase(), conferir: { empresa: emp, numero: num } }
+           : { linha: linha, situacao: nova, mes: mesBase(), conferir: { empresa: emp, numero: num } };
   api('quitaMudarSituacao', args).then(function (r) {
-    aviso(baixa ? okmsg : ('Situação de "' + rot + '" alterada para ' + nova + '.' + (r && r.inativo ? ' Saiu das pendências.' : '')));
+    aviso((baixa || baixaMes) ? okmsg : ('Situação de "' + rot + '" alterada para ' + nova + '.' + (r && r.inativo ? ' Saiu das pendências.' : '')));
     if (SITE) { S.atualizando = true; desenharTopo(); api('quitaSincronizar', mesBase()).then(function (d) { S.atualizando = false; S.geradoEm = new Date().toISOString(); aplicarVM(d, true); }).catch(function () { S.atualizando = false; desenharTopo(); }); }
   }).catch(function (e) { sel.disabled = false; sel.value = ''; falhou(e); });
 }
