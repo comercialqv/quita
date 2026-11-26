@@ -2324,7 +2324,7 @@ document.addEventListener('click', function (ev) {
     else if (x.ac === 'rodadas') { S.tela = 'rodadas'; desenhar(); }
     else if (x.ac === 'envios') { S.tela = 'envios'; S.envAberto = x.chave; desenhar(); }
     else if (x.ac === 'guia' && x.link) window.open(x.link, '_blank');
-    else if (x.ac === 'confirmar' && x.linhaNovo && REAL) { ln.classList.add('carregando'); api('quitaAprovarNovo', x.linhaNovo, {}).then(function (r) { VM.fila = VM.fila.filter(function (y) { return y !== x; }); aviso('Gravado na planilha, linha ' + r.linha + '. Complete a data de adesão.'); desenhar(); }).catch(falhou); }
+    else if (x.ac === 'confirmar' && x.linhaNovo && REAL) { ln.classList.add('carregando'); api('quitaAprovarNovo', x.linhaNovo, {}).then(function (r) { VM.fila = VM.fila.filter(function (y) { return y !== x; }); aviso('Gravado no controle (linha ' + r.linha + '). Complete a data de adesão.'); desenhar(); if (SITE) { S.atualizando = true; desenharTopo(); api('quitaSincronizar', mesBase()).then(function (d) { S.atualizando = false; S.geradoEm = new Date().toISOString(); aplicarVM(d, true); }).catch(function () { S.atualizando = false; desenharTopo(); }); } }).catch(falhou); }
     else if (x.ac === 'confirmar') { VM.fila = VM.fila.filter(function (y) { return y !== x; }); aviso('Parcelamento gravado na planilha.'); desenhar(); }
     else { S.tela = 'parcelamentos'; S.pf.q = x.cli; desenhar(); }
     return;
