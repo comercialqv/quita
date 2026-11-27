@@ -355,6 +355,7 @@ html,body{overflow-x:hidden}
 .gm-guia.falta{color:var(--text-2)}
 .gm-guia.falta .arq{color:var(--warn)}
 .gm-guia.falta .i{color:var(--warn)}
+.gm-acoes{display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--warn) 5%,transparent)}
 .gm-guia.rep{opacity:.6}
 .gm-guia.rep .arq{text-decoration:line-through;text-decoration-color:var(--text-3)}
 .gm-guia .acao{display:flex;gap:8px;align-items:center;justify-content:flex-end}
@@ -962,6 +963,13 @@ function telaGuias() {
     var esp = ng + c.falta.length;
     h += '<section class="gm-cli" aria-label="' + esc(c.cli) + '"><div class="gm-cab"><div style="min-width:0"><b title="' + esc(c.cli) + '">' + esc(c.cli) + '</b><span class="mono t3" style="display:block">' + esc(cnpj(c.cnpj)) + '</span></div>' +
       '<span class="t3 cont num">' + (esp ? ng + ' de ' + plural(esp, 'guia', 'guias') : '') + '</span><span class="tot">' + (vt ? real(vt) : '') + '</span><span class="selo ' + st[1] + '">' + esc(st[0]) + '</span></div>';
+    if (c.falta.length) {
+      var faltaLinhas = c.falta.map(function (x) { return (x && x.linha) ? x.linha : 0; }).filter(Boolean);
+      h += '<div class="gm-acoes">' +
+        (faltaLinhas.length ? '<button class="btn" data-acao="baixarEmp" data-emp="' + esc(c.cli) + '" data-linhas="' + faltaLinhas.join(',') + '">' + ic('check') + 'Baixar o que falta (' + faltaLinhas.length + ')</button>' : '') +
+        '<button class="btn" data-acao="relerEmp" data-emp="' + esc(c.cli) + '" title="Lê de novo as guias que já estão na pasta — conserta guia que entrou com o tipo errado">' + ic('relogio') + 'Reler guias</button>' +
+        '</div>';
+    }
     c.guias.forEach(function (g) {
       h += '<div class="gm-guia' + (g.qv ? ' qv' : '') + (g.rep ? ' rep' : '') + '">' + ic('guias') + '<span class="arq" title="' + esc(g.arq) + '">' + esc(g.arq) + '</span>' +
         '<span class="det">' + esc(g.mod ? g.mod + (g.num ? ' nº ' + g.num : '') : (g.lida === false ? 'ainda não lida' : 'não identificada')) + (g.parc ? ' · parcela ' + esc(g.parc.replace(' de ', '/')) : '') + (g.rep ? ' · cópia repetida' : '') + (g.qv ? ' · <span style="color:var(--text-3)">a Q&amp;V paga, não vai ao cliente</span>' : '') + '</span>' +
@@ -2405,6 +2413,26 @@ document.addEventListener('click', function (ev) {
   if (ac === 'limparSel') { S.sel = {}; return desenhar(); }
   if (ac === 'enviarSel' && VM.fila.some(function (y) { return y.chave; })) { var chs = VM.fila.filter(function (y) { return S.sel[y.id] && y.chave; }).map(function (y) { return y.chave; }); return enviar(chs, 'email', a); }
   if (ac === 'enviarSel') { a.classList.add('carregando'); var ids = Object.keys(S.sel).filter(function (k) { return S.sel[k]; }); setTimeout(function () { VM.fila = VM.fila.filter(function (y) { return ids.indexOf(y.id) < 0; }); VM.enviados += ids.length; S.sel = {}; aviso(plural(ids.length, 'guia enviada', 'guias enviadas') + ' por e-mail.'); desenhar(); }, 800); }
+  if (ac === 'baixarEmp') {
+    var bemp = a.getAttribute('data-emp'), blin = (a.getAttribute('data-linhas') || '').split(',').filter(Boolean).map(Number);
+    if (!blin.length) return;
+    if (!confirm('Dar baixa em ' + plural(blin.length, 'pendência', 'pendências') + ' de ' + bemp + ' só neste mês?\n\nTodas saem da pendência do mês. No próximo mês voltam a ser cobradas normalmente.')) return;
+    if (!REAL) { aviso('Baixadas ' + blin.length + ' pendências de ' + bemp + '.'); return; }
+    a.classList.add('carregando');
+    api('quitaBaixarEmpresa', { empresa: bemp, mes: mesBase(), itens: blin.map(function (l) { return { linha: l }; }) }).then(function (r) {
+      aviso(plural((r && r.baixados) || blin.length, 'pendência baixada', 'pendências baixadas') + ' em ' + bemp + '.'); aplicarVM(r, true);
+    }).catch(function (e) { a.classList.remove('carregando'); falhou(e); });
+    return;
+  }
+  if (ac === 'relerEmp') {
+    var remp = a.getAttribute('data-emp');
+    if (!REAL) { aviso('Guias de ' + remp + ' relidas.'); return; }
+    a.classList.add('carregando');
+    api('quitaRelerEmpresa', { empresa: remp, mes: mesBase() }).then(function (r) {
+      aviso('Guias de ' + remp + ' relidas' + (r && typeof r.relidas === 'number' ? ' (' + r.relidas + ')' : '') + '. O que estava classificado errado foi corrigido.'); aplicarVM(r, true);
+    }).catch(function (e) { a.classList.remove('carregando'); falhou(e); });
+    return;
+  }
 });
 document.addEventListener('keydown', function (ev) {
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') { ev.preventDefault(); abrirBusca(); }
